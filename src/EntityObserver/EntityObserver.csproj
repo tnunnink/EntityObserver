@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <LangVersion>9</LangVersion>
+        <Title>MObserve</Title>
+        <Authors>Timothy Nunnink</Authors>
+    </PropertyGroup>
+
+</Project>
