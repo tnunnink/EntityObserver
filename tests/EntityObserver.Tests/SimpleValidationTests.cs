@@ -9,7 +9,7 @@ namespace EntityObserver.Tests
     [TestFixture]
     public class SimpleValidationTests
     {
-        private Address _model;
+        private Address _entity;
         private Fixture _fixture;
         private AddressObserver _observer;
 
@@ -17,8 +17,8 @@ namespace EntityObserver.Tests
         public void Setup()
         {
             _fixture = new Fixture();
-            _model = _fixture.Create<Address>();
-            _observer = new AddressObserver(_model);
+            _entity = _fixture.Create<Address>();
+            _observer = new AddressObserver(_entity);
         }
 
         [Test]
@@ -65,6 +65,12 @@ namespace EntityObserver.Tests
             _observer.City = _fixture.Create<string>();
 
             monitor.Should().Raise(nameof(_observer.ErrorsChanged));
+        }
+
+        [Test]
+        public void ValidateObject()
+        {
+            
         }
     }
 }

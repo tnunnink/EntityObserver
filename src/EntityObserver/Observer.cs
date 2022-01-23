@@ -15,9 +15,9 @@ namespace EntityObserver
     /// 
     /// </summary>
     /// <typeparam name="TEntity"></typeparam>
-    public abstract class Observer<TEntity> : Notifiable, IObserver<TEntity> where TEntity : class
+    public abstract class Observer<TEntity> : ValidationNotifier, IObserver<TEntity> where TEntity : class
     {
-        private readonly Dictionary<string, object> _originalValues = new();
+        private readonly Dictionary<string, object?> _originalValues = new();
         private readonly List<IObserver> _observers = new();
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace EntityObserver
         /// <param name="propertyName">The name of the property to get the value for.</param>
         /// <param name="getter">An optional getting <see cref="Func{TResult}"/> delegate that specifies how to get
         /// the value of the underlying model property. If not provided, the method will use reflection.</param>
-/// <typeparam name="TValue">The type of the value to retrieve from the underlying model.</typeparam>peparam>
+        /// <typeparam name="TValue">The type of the value to retrieve from the underlying model.</typeparam>
         /// <returns>The value of the specified model property.</returns>
         /// <exception cref="ArgumentException">
         /// propertyName is null or empty -or- the specified name does not exist on the underlying model object.
@@ -77,21 +77,20 @@ namespace EntityObserver
         /// <param name="onChanged">
         /// An optional action delegate that represents an action to be performed immediately after the value has been changed.
         /// </param>
-        /// <param name="validationOption"></param/// <typeparam name="TValue">The type of the value that is being set on the model object.</typeparam>typeparam>
+        /// <param name="validateOnChange">Flag indicating whether to perform validation when the property is changes.</param>
+        /// <typeparam name="TValue">The type of the value that is being set on the model object.</typeparam>
         /// <returns>true if the provided value was set on the model object; otherwise, false.</returns>
         protected bool SetValue<TValue>(TValue value,
             [CallerMemberName] string? propertyName = null,
             Func<TEntity, TValue>? getter = null,
             Action<TEntity, TValue>? setter = null,
             Action? onChanged = null,
-            ValidationOption? validationOption = null)
+            bool validateOnChange = true)
         {
             var propertyInfo = GetModelProperty(propertyName);
 
             getter ??= m => (TValue)GetModelProperty(propertyName).GetValue(m)!;
             var current = getter.Invoke(Entity);
-
-            //var current = (TValue)propertyInfo.GetValue(Model)!;
 
             if (EqualityComparer<TValue>.Default.Equals(current, value)) return false;
 
@@ -99,10 +98,11 @@ namespace EntityObserver
 
             setter ??= (m, v) => propertyInfo.SetValue(m, v);
             setter.Invoke(Entity, value);
-            
+
             onChanged?.Invoke();
-            
-            ValidateProperty(propertyInfo.Name, value);
+
+            if (validateOnChange)
+                Validate(propertyInfo.Name, value);
 
             RaisePropertyChanged(propertyName);
             RaisePropertyChanged(nameof(IsChanged));
@@ -130,22 +130,18 @@ namespace EntityObserver
 
             foreach (var observer in _observers)
                 observer.RejectChanges();
-
             
-            //todo do we actually need to do this?
-            ValidateObject();
+            Validate();
             RaisePropertyChanged(string.Empty);
         }
 
         /// <summary>
-        /// Gets the original value of the specified property determined using the provided member expression.
+        /// 
         /// </summary>
-        /// <param name="propertySelector">A member expression that selects a property of the current model.</p/// <typeparam name="TValue">The type property for which to get the original value for.</typeparam>r.</typeparam>
-        /// <returns>
-        /// The value of the model properties original value before it was change.
-        /// If it has not been changed, then the current value of the property.
-        /// </returns>
-        /// <exception cref="ArgumentException">propertySelect is not of type <see cref="MemberExpression"/>.</exception>
+        /// <param name="propertySelector"></param>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public TValue GetOriginalValue<TValue>(Expression<Func<TEntity, TValue>> propertySelector)
         {
             if (propertySelector.Body is not MemberExpression memberExpression)
@@ -154,16 +150,17 @@ namespace EntityObserver
             var propertyName = memberExpression.Member.Name;
 
             return _originalValues.ContainsKey(propertyName)
-                ? (TValue)_originalValues[propertyName]
+                ? (TValue)_originalValues[propertyName]!
                 : GetValue<TValue>(propertyName);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="propertySelector"><//// <typeparam name="TProperty"></typeparam>y"></typeparam>
+        /// <param name="propertySelector"></param>
+        /// <typeparam name="TProperty"></typeparam>
         /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="ArgumentException"></exception>
         public bool GetIsChanged<TProperty>(Expression<Func<TEntity, TProperty>> propertySelector)
         {
             if (propertySelector.Body is not MemberExpression memberExpression)
@@ -183,17 +180,19 @@ namespace EntityObserver
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="wrapperCollection"></param>
-        /// <param name="modelCollection"></// <typeparam name="TObserver"></typeparam>er"></typ/// <typeparam name="TMember"></typeparam>er"></typeparam>
+        /// <param name="observableCollection"></param>
+        /// <param name="modelCollection"></param>
+        /// <typeparam name="TObserver"></typeparam>
+        /// <typeparam name="TMember"></typeparam>
         protected void RegisterCollection<TObserver, TMember>(
-            ObserverCollection<TObserver> wrapperCollection,
+            ObservableCollection<TObserver> observableCollection,
             ICollection<TMember> modelCollection)
             where TObserver : class, IObserver<TMember>
             where TMember : class
         {
-            wrapperCollection.CollectionChanged += (_, e) =>
+            observableCollection.CollectionChanged += (_, e) =>
             {
-                if (wrapperCollection.Count > 0)
+                if (observableCollection.Count > 0)
                 {
                     if (e.OldItems is not null)
                         foreach (var item in e.OldItems.Cast<TObserver>())
@@ -209,23 +208,21 @@ namespace EntityObserver
                     modelCollection.Clear();
                 }
 
-                ValidateObject();
+                Validate();
             };
         }
 
         /// <summary>
-        /// Registers a collection changed event handler to the provided observable collection so the the user can
-        /// perform custom synchronization logic when an <see cref="Observer{TModel}"/> member collection is updated. 
+        /// 
         /// </summary>
-        /// <param name="collection">The wrapper collection to attach the collection change event handler to.</param>
-        /// <param name="onCollectionChanged">
-        /// An <see cref="NotifyCollectionChangedEventHandler"/> to execute when the collection items are added or removed.
-        ////// <typeparam name="TObservable">The type of model that the </typeparam>t the </typeparam>
+        /// <param name="collection"></param>
+        /// <param name="onCollectionChanged"></param>
+        /// <typeparam name="TObservable"></typeparam>
         protected void RegisterCollection<TObservable>(ObservableCollection<TObservable> collection,
             NotifyCollectionChangedEventHandler onCollectionChanged)
         {
             collection.CollectionChanged += onCollectionChanged;
-            collection.CollectionChanged += (_, _) => ValidateObject();
+            collection.CollectionChanged += (_, _) => Validate();
         }
 
         /// <summary>
@@ -267,10 +264,10 @@ namespace EntityObserver
         protected void InitializeObservers()
         {
             var properties = GetType().GetProperties();
-            
+
             foreach (var property in properties.Where(p => p.PropertyType.IsObserver()))
             {
-                var observer = property.PropertyType.IsObserverCollection() 
+                var observer = property.PropertyType.IsObserverCollection()
                     ? InstantiateObserverCollection(property)
                     : InstantiateObserver(property);
 
@@ -290,11 +287,11 @@ namespace EntityObserver
         {
             var model = GetModelProperty(propertyInfo.Name).GetValue(Entity);
 
-            if (model is null) return null; 
+            if (model is null) return null;
 
             return Activator.CreateInstance(propertyInfo.PropertyType, model) as IObserver;
         }
-        
+
         /// <summary>
         /// Creates a new <see cref="ObserverCollection{TObserver}"/> instance using the provided property type.
         /// </summary>
@@ -308,7 +305,7 @@ namespace EntityObserver
 
             var observerType = propertyInfo.PropertyType.GetGenericArguments()[0];
             var observers = observerType.CreateList();
-            
+
             foreach (var item in collection)
             {
                 var instance = Activator.CreateInstance(observerType, item) as IObserver;
@@ -318,8 +315,8 @@ namespace EntityObserver
             return Activator.CreateInstance(propertyInfo.PropertyType, observers) as IObserver;
         }
 
-        
-        private void UpdateOriginalValue(object current, object value, string propertyName)
+
+        private void UpdateOriginalValue(object? current, object? value, string propertyName)
         {
             if (!_originalValues.ContainsKey(propertyName))
             {

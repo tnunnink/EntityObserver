@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EntityObserver
 {
@@ -37,7 +38,7 @@ namespace EntityObserver
         public static IList CreateList(this Type type)
         {
             var listType = typeof(List<>).MakeGenericType(type);
-            
+
             var instance = Activator.CreateInstance(listType);
 
             if (instance is not IList list)
@@ -45,5 +46,13 @@ namespace EntityObserver
 
             return list;
         }
+
+        public static IEnumerable<TAttribute> FindAttributes<TAttribute>(this Type type)
+            where TAttribute : Attribute =>
+            type.GetProperties().SelectMany(p => p.GetCustomAttributes(false).OfType<TAttribute>());
+
+        public static TAttribute? FindAttribute<TAttribute>(this Type type, string propertyName)
+            where TAttribute : Attribute =>
+            type.GetProperty(propertyName)?.GetCustomAttributes(false).OfType<TAttribute>().FirstOrDefault();
     }
 }
