@@ -342,11 +342,11 @@ namespace EntityObserver
         /// <returns>A new instance of a <see cref="IObserver"/> wrapping the underlying model property.</returns>
         private IObserver? InstantiateObserver(PropertyInfo propertyInfo)
         {
-            var model = GetModelProperty(propertyInfo.Name).GetValue(Entity);
+            var property = GetModelProperty(propertyInfo.Name).GetValue(Entity);
 
-            if (model is null) return null;
+            if (property is null) return null;
 
-            return Activator.CreateInstance(propertyInfo.PropertyType, model) as IObserver;
+            return Activator.CreateInstance(propertyInfo.PropertyType, property) as IObserver;
         }
 
         /// <summary>
@@ -356,14 +356,14 @@ namespace EntityObserver
         /// <returns>A new instance of a <see cref="ObserverCollection{TObserver}"/> wrapping the underlying model collection.</returns>
         private IObserver? InstantiateObserverCollection(PropertyInfo propertyInfo)
         {
-            var modelCollection = GetModelProperty(propertyInfo.Name).GetValue(Entity);
+            var property = GetModelProperty(propertyInfo.Name).GetValue(Entity);
 
-            if (modelCollection is not ICollection collection) return null;
+            if (property is not IEnumerable enumerable) return null;
 
             var observerType = propertyInfo.PropertyType.GetGenericArguments()[0];
             var observers = observerType.CreateList();
 
-            foreach (var item in collection)
+            foreach (var item in enumerable)
             {
                 var instance = Activator.CreateInstance(observerType, item) as IObserver;
                 observers.Add(instance);

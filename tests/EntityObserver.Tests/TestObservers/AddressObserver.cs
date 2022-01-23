@@ -11,11 +11,12 @@ namespace EntityObserver.Tests.TestObservers
         {
         }
 
+        //overriding validation example
         [Required(ErrorMessage = "Id is required")]
         public Guid Id
         {
             get => GetValue<Guid>();
-            set => SetValue(value);
+            set => SetValue(value, validationOption: ValidationOption.All);
         }
 
         [Required(ErrorMessage = "Street is required")]
@@ -25,11 +26,12 @@ namespace EntityObserver.Tests.TestObservers
             set => SetValue(value);
         }
 
+        //Custom getter setter example
         [Required(ErrorMessage = "City is required")]
         public string City
         {
             get => GetValue<string>();
-            set => SetValue(value);
+            set => SetValue(value, getter: a => a.City, setter: (a, s) => a.City = s);
         }
 
         [Required(ErrorMessage = "State is required")]

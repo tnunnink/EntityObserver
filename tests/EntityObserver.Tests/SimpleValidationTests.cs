@@ -216,6 +216,19 @@ namespace EntityObserver.Tests
             observer.GetErrors(m => m.State).Should().HaveCount(0);
             observer.GetErrors(m => m.Zip).Should().HaveCount(0);
         }
+        
+        
+        [Test]
+        public void SetValue_PropertyWithValidationOverride_ShouldHaveErrorsDueToValidation()
+        {
+            var observer = new AddressObserver(_invalid);
+            var monitor = observer.Monitor();
+            
+            observer.Id = _fixture.Create<Guid>();
+
+            observer.HasErrors.Should().BeTrue();
+            monitor.Should().Raise("ErrorsChanged");
+        }
 
         [Test]
         public void GetErrors_InvalidEntity_ShouldReturnExpected()
