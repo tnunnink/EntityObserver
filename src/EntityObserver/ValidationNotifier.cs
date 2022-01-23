@@ -13,15 +13,7 @@ namespace EntityObserver
     /// </summary>
     public abstract class ValidationNotifier : INotifyPropertyChanged, INotifyDataErrorInfo
     {
-        private readonly Dictionary<string, List<string?>> _errors;
-
-        /// <summary>
-        /// Creates a new instance of a <see cref="ValidationNotifier"/> base class.
-        /// </summary>
-        protected ValidationNotifier()
-        {
-            _errors = new Dictionary<string, List<string?>>();
-        }
+        private readonly Dictionary<string, List<string?>> _errors = new();
 
         /// <inheritdoc />
         public virtual bool HasErrors => _errors.Any();

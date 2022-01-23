@@ -12,22 +12,22 @@ using System.Runtime.CompilerServices;
 namespace EntityObserver
 {
     /// <summary>
-    /// 
+    /// An entity wrapper that adds change notification, change tracking, and validation for use in Windows applications. 
     /// </summary>
-    /// <typeparam name="TEntity"></typeparam>
+    /// <typeparam name="TEntity">The type of the entity or model that the observer is wrapping.</typeparam>
     public abstract class Observer<TEntity> : ValidationNotifier, IObserver<TEntity> where TEntity : class
     {
         private readonly Dictionary<string, object?> _originalValues = new();
         private readonly List<IObserver> _observers = new();
 
         /// <summary>
-        /// Creates a new instance of the <see cref="Observer{TModel}"/> wrapper with the provided model class.
+        /// Creates a new instance of the <see cref="Observer{TModel}"/> wrapper with the provided entity class.
         /// </summary>
-        /// <param name="model">A class that represents the model of the current observable wrapper.</param>
+        /// <param name="entity">A class that represents the model of the current observable wrapper.</param>
         /// <exception cref="ArgumentNullException">model is null.</exception>
-        protected Observer(TEntity model)
+        protected Observer(TEntity entity)
         {
-            Entity = model ?? throw new ArgumentNullException(nameof(model), "Model cannot be null");
+            Entity = entity ?? throw new ArgumentNullException(nameof(entity), "Model cannot be null");
         }
 
         /// <inheritdoc />
@@ -226,15 +226,23 @@ namespace EntityObserver
         }
 
         /// <summary>
-        /// 
+        /// Provides the ability for an observable collection to update its underlying entity collection when items
+        /// in the collection change. This prevents the user from having to manually keep collections in sync. 
         /// </summary>
-        /// <param name="observableCollection"></param>
-        /// <param name="modelCollection"></param>
-        /// <typeparam name="TObserver"></typeparam>
+        /// <param name="observableCollection">An observable collection to monitor for changes.</param>
+        /// <param name="entityCollection">The underlying entity collection that should be kept in sync.</param>
+        /// <typeparam name="TObserver">The type of </typeparam>
         /// <typeparam name="TMember"></typeparam>
-        protected void RegisterCollection<TObserver, TMember>(
+        /// <remarks>
+        /// This is the standard implementation which assumes that the underlying entity collection is a simple mutable
+        /// collection where items can be added or removed without any additional considerations. For entities or domain
+        /// classes with more complex logic for adding and removing items, the user can specify a custom synchronization
+        /// event handler using the alternate overload. Otherwise, the user can handle synchronization logix manually.
+        /// </remarks>
+        /// <seealso cref="SynchronizeCollections{TObserver}"/>
+        protected void SynchronizeCollections<TObserver, TMember>(
             ObservableCollection<TObserver> observableCollection,
-            ICollection<TMember> modelCollection)
+            ICollection<TMember> entityCollection)
             where TObserver : class, IObserver<TMember>
             where TMember : class
         {
@@ -244,18 +252,18 @@ namespace EntityObserver
                 {
                     if (e.OldItems is not null)
                         foreach (var item in e.OldItems.Cast<TObserver>())
-                            modelCollection.Remove(item.Entity);
+                            entityCollection.Remove(item.Entity);
 
                     if (e.NewItems is null) return;
 
                     foreach (var item in e.NewItems.Cast<TObserver>())
-                        modelCollection.Add(item.Entity);
+                        entityCollection.Add(item.Entity);
                 }
                 else
                 {
-                    modelCollection.Clear();
+                    entityCollection.Clear();
                 }
-
+                
                 Validate();
             };
         }
@@ -265,9 +273,10 @@ namespace EntityObserver
         /// </summary>
         /// <param name="collection"></param>
         /// <param name="onCollectionChanged"></param>
-        /// <typeparam name="TObservable"></typeparam>
-        protected void RegisterCollection<TObservable>(ObservableCollection<TObservable> collection,
+        /// <typeparam name="TObserver"></typeparam>
+        protected void SynchronizeCollections<TObserver>(ObservableCollection<TObserver> collection,
             NotifyCollectionChangedEventHandler onCollectionChanged)
+            where TObserver : class, IObserver
         {
             collection.CollectionChanged += onCollectionChanged;
             collection.CollectionChanged += (_, _) => Validate();

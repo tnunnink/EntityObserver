@@ -45,9 +45,15 @@ namespace EntityObserver.Tests
             
             _observable.Address.Zip = _fixture.Create<int>();
 
-            //monitor.Should().RaisePropertyChangeFor(m => m.Address.Zip);
+            //monitor.Should().RaisePropertyChangeFor(m => m.Address.Zip); todo figure out why this is not working
             monitor.Should().RaisePropertyChangeFor(m => m.Address.IsChanged);
             monitor.Should().RaisePropertyChangeFor(m => m.IsChanged);
+        }
+
+        [Test]
+        public void METHOD()
+        {
+            
         }
     }
 }

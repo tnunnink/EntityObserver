@@ -5,7 +5,7 @@ namespace EntityObserver.Tests.TestObservers
 {
     public class CarObserver : Observer<Car>
     {
-        public CarObserver(Car model) : base(model)
+        public CarObserver(Car entity) : base(entity)
         {
         }
 

@@ -7,7 +7,7 @@ namespace EntityObserver.Tests.TestObservers
 {
     public class AddressObserver : Observer<Address>
     {
-        public AddressObserver(Address model) : base(model)
+        public AddressObserver(Address entity) : base(entity)
         {
         }
 

@@ -1,16 +1,22 @@
 ﻿using System.Collections.ObjectModel;
-using EntityObserver;
+using System.Linq;
 using EntityObserver.Tests.TestEntities;
 
 namespace EntityObserver.Tests.TestObservers
 {
-    public class PersonObserver : Observer<Person>
+    public class RegistrationObserver : Observer<Person>
     {
-        public PersonObserver(Person entity) : base(entity)
+        public RegistrationObserver(Person entity) : base(entity)
         {
-            InitializeObservers();
-        }
+            Address = new AddressObserver(entity.Address);
+            RegisterObserver(Address);
 
+            Emails = new ObservableCollection<string>(entity.Emails);
+
+            Cars = new ObserverCollection<CarObserver>(entity.Cars.Select(c => new CarObserver(c)));
+            RegisterObserver(Cars);
+        }
+        
         public int Id
         {
             get => GetValue<int>();
@@ -53,10 +59,10 @@ namespace EntityObserver.Tests.TestObservers
             set => SetValue(value);
         }
         
-        public AddressObserver Address { get; set; }
+        public AddressObserver Address { get; }
 
-        public ObservableCollection<string> Emails { get; set; }
+        public ObservableCollection<string> Emails { get; }
 
-        public ObserverCollection<CarObserver> Cars { get; set; }
+        public ObserverCollection<CarObserver> Cars { get; }
     }
 }
