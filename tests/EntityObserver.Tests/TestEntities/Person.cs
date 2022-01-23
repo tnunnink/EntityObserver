@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EntityObserver.Tests.TestModels
+namespace EntityObserver.Tests.TestEntities
 {
     public class Person
     {

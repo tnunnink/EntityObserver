@@ -1,4 +1,4 @@
-﻿namespace EntityObserver.Tests.TestModels
+﻿namespace EntityObserver.Tests.TestEntities
 {
     public class Car
     {

@@ -77,7 +77,7 @@ namespace EntityObserver
         /// <param name="onChanged">
         /// An optional action delegate that represents an action to be performed immediately after the value has been changed.
         /// </param>
-        /// <param name="validateOnChange">Flag indicating whether to perform validation when the property is changes.</param>
+        /// <param name="validationOption">.</param>
         /// <typeparam name="TValue">The type of the value that is being set on the model object.</typeparam>
         /// <returns>true if the provided value was set on the model object; otherwise, false.</returns>
         protected bool SetValue<TValue>(TValue value,
@@ -85,7 +85,7 @@ namespace EntityObserver
             Func<TEntity, TValue>? getter = null,
             Action<TEntity, TValue>? setter = null,
             Action? onChanged = null,
-            bool validateOnChange = true)
+            ValidationOption? validationOption = null)
         {
             var propertyInfo = GetModelProperty(propertyName);
 
@@ -101,8 +101,10 @@ namespace EntityObserver
 
             onChanged?.Invoke();
 
-            if (validateOnChange)
+            if (validationOption is null)
                 Validate(propertyInfo.Name, value);
+            else
+                Validate(validationOption);
 
             RaisePropertyChanged(propertyName);
             RaisePropertyChanged(nameof(IsChanged));
@@ -130,19 +132,22 @@ namespace EntityObserver
 
             foreach (var observer in _observers)
                 observer.RejectChanges();
-            
+
             Validate();
             RaisePropertyChanged(string.Empty);
         }
 
         /// <summary>
-        /// 
+        /// Gets the original value of the specified property.
         /// </summary>
-        /// <param name="propertySelector"></param>
-        /// <typeparam name="TValue"></typeparam>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        public TValue GetOriginalValue<TValue>(Expression<Func<TEntity, TValue>> propertySelector)
+        /// <param name="propertySelector">
+        /// An expression that selects a specific property of the <see cref="Observer{TEntity}"/>.
+        /// This expression must be of type <see cref="MemberExpression"/>.
+        /// </param>
+        /// <typeparam name="TProperty">The type of property to select.</typeparam>
+        /// <returns>The original value of the selected property if it has pending changes; otherwise, the current value.</returns>
+        /// <exception cref="ArgumentException">propertySelector is not a <see cref="MemberExpression"/>.</exception>
+        public TProperty GetOriginalValue<TProperty>(Expression<Func<TEntity, TProperty>> propertySelector)
         {
             if (propertySelector.Body is not MemberExpression memberExpression)
                 throw new ArgumentException($"Property selector must be of type {typeof(MemberExpression)}.");
@@ -150,17 +155,20 @@ namespace EntityObserver
             var propertyName = memberExpression.Member.Name;
 
             return _originalValues.ContainsKey(propertyName)
-                ? (TValue)_originalValues[propertyName]!
-                : GetValue<TValue>(propertyName);
+                ? (TProperty)_originalValues[propertyName]!
+                : GetValue<TProperty>(propertyName);
         }
 
         /// <summary>
-        /// 
+        /// Gets a value indicating whether the specified property has pending changes.
         /// </summary>
-        /// <param name="propertySelector"></param>
-        /// <typeparam name="TProperty"></typeparam>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
+        /// <param name="propertySelector">
+        /// An expression that selects a specific property of the <see cref="Observer{TEntity}"/>.
+        /// This expression must be of type <see cref="MemberExpression"/>.
+        /// </param>
+        /// <typeparam name="TProperty">The type of property to select.</typeparam>
+        /// <returns>ture if the specified property has pending changes; otherwise, false..</returns>
+        /// <exception cref="ArgumentException">propertySelector is not a <see cref="MemberExpression"/>.</exception>
         public bool GetIsChanged<TProperty>(Expression<Func<TEntity, TProperty>> propertySelector)
         {
             if (propertySelector.Body is not MemberExpression memberExpression)
@@ -169,6 +177,46 @@ namespace EntityObserver
             var propertyName = memberExpression.Member.Name;
 
             return _originalValues.ContainsKey(propertyName);
+        }
+
+        /// <summary>
+        /// Gets a collection of errors for the specified property using the provided property selector expression
+        /// </summary>
+        /// <param name="propertySelector">
+        /// An expression that selects a specific property of the <see cref="Observer{TEntity}"/>.
+        /// This expression must be of type <see cref="MemberExpression"/>.
+        /// </param>
+        /// <typeparam name="TProperty">The type of property to select.</typeparam>
+        /// <returns>A collection of errors for the specified property if any exist; otherwise, and empty collection.</returns>
+        /// <exception cref="ArgumentException">propertySelector is not a <see cref="MemberExpression"/>.</exception>
+        public IEnumerable<string> GetErrors<TProperty>(Expression<Func<TEntity, TProperty>> propertySelector)
+        {
+            if (propertySelector.Body is not MemberExpression memberExpression)
+                throw new ArgumentException($"Property selector must be of type {typeof(MemberExpression)}.");
+
+            var propertyName = memberExpression.Member.Name;
+
+            return GetErrors(propertyName) as IEnumerable<string> ?? Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Performs validation on the specified property of the current <see cref="Observer{TEntity}"/>.
+        /// </summary>
+        /// <param name="propertySelector">
+        /// An expression that selects a specific property of the <see cref="Observer{TEntity}"/>.
+        /// This expression must be of type <see cref="MemberExpression"/>.
+        /// </param>
+        /// <typeparam name="TProperty">The type of property to select.</typeparam>
+        /// <exception cref="ArgumentException">propertySelector is not a <see cref="MemberExpression"/>.</exception>
+        public void Validate<TProperty>(Expression<Func<TEntity, TProperty>> propertySelector)
+        {
+            if (propertySelector.Body is not MemberExpression memberExpression)
+                throw new ArgumentException($"Property selector must be of type {typeof(MemberExpression)}.");
+
+            var propertyName = memberExpression.Member.Name;
+            var value = GetValue<TProperty>(propertyName);
+
+            Validate(propertyName, value);
         }
 
         /// <inheritdoc />

@@ -25,6 +25,24 @@ namespace EntityObserver
         private readonly ObservableCollection<TObserver> _addedItems;
         private readonly ObservableCollection<TObserver> _removedItems;
         private readonly ObservableCollection<TObserver> _modifiedItems;
+
+        /// <summary>
+        /// Creates a new empty instance of <see cref="ObserverCollection{TObserver}"/>.
+        /// </summary>
+        public ObserverCollection()
+        {
+            _originalCollection = this.ToList();
+
+            AttachPropertyChangeHandler(_originalCollection);
+
+            _addedItems = new ObservableCollection<TObserver>();
+            _removedItems = new ObservableCollection<TObserver>();
+            _modifiedItems = new ObservableCollection<TObserver>();
+
+            AddedItems = new ReadOnlyObservableCollection<TObserver>(_addedItems);
+            RemovedItems = new ReadOnlyObservableCollection<TObserver>(_removedItems);
+            ModifiedItems = new ReadOnlyObservableCollection<TObserver>(_modifiedItems);
+        }
         
         /// <summary>
         /// Creates a new instance of <see cref="ObserverCollection{TObserver}"/> containing the collection

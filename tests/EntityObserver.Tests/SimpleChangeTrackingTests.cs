@@ -1,6 +1,6 @@
 ﻿using AutoFixture;
+using EntityObserver.Tests.TestEntities;
 using FluentAssertions;
-using EntityObserver.Tests.TestModels;
 using EntityObserver.Tests.TestObservers;
 using NUnit.Framework;
 

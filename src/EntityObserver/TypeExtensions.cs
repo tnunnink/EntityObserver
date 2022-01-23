@@ -39,18 +39,20 @@ namespace EntityObserver
         {
             var listType = typeof(List<>).MakeGenericType(type);
 
-            var instance = Activator.CreateInstance(listType);
-
-            if (instance is not IList list)
-                throw new InvalidOperationException();
-
-            return list;
+            return (Activator.CreateInstance(listType) as IList)!;
         }
 
         public static IEnumerable<TAttribute> FindAttributes<TAttribute>(this Type type)
             where TAttribute : Attribute =>
             type.GetProperties().SelectMany(p => p.GetCustomAttributes(false).OfType<TAttribute>());
 
+        /// <summary>
+        /// Gets an attribute on the specified property for the current type.  
+        /// </summary>
+        /// <param name="type">The current type instance.</param>
+        /// <param name="propertyName">The property to get the attribute for.</param>
+        /// <typeparam name="TAttribute">The type of attribute to get.</typeparam>
+        /// <returns>An attribute instance of the specified type for the specified property name if it exists; otherwise, null.</returns>
         public static TAttribute? FindAttribute<TAttribute>(this Type type, string propertyName)
             where TAttribute : Attribute =>
             type.GetProperty(propertyName)?.GetCustomAttributes(false).OfType<TAttribute>().FirstOrDefault();

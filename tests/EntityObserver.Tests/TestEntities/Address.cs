@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace EntityObserver.Tests.TestModels
+namespace EntityObserver.Tests.TestEntities
 {
     public class Address
     {

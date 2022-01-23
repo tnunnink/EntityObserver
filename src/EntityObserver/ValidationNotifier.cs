@@ -11,7 +11,7 @@ namespace EntityObserver
     /// <summary>
     /// A base implementation for the <see cref="INotifyPropertyChanged"/> and <see cref="INotifyDataErrorInfo"/>.
     /// </summary>
-    public abstract class ValidationNotifier : INotifyPropertyChanged, INotifyDataErrorInfo, IValidator
+    public abstract class ValidationNotifier : INotifyPropertyChanged, INotifyDataErrorInfo
     {
         private readonly Dictionary<string, List<string?>> _errors;
 
@@ -27,9 +27,6 @@ namespace EntityObserver
         public virtual bool HasErrors => _errors.Any();
 
         /// <inheritdoc />
-        public virtual bool IsValid => !HasErrors;
-
-        /// <inheritdoc />
         public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <inheritdoc />
@@ -43,19 +40,41 @@ namespace EntityObserver
                 : Enumerable.Empty<string>();
         }
 
-        /// <inheritdoc />
-        public void Validate(bool requiredOnly = false)
+        /// <summary>
+        /// Gets all errors on the current <see cref="ValidationNotifier"/> object.
+        /// </summary>
+        /// <returns>A collection of string error messages if any exist; otherwise, and empty collection.</returns>
+        public IEnumerable<string?> GetErrors()
         {
-            if (requiredOnly)
-            {
-                ValidateRequired();
-                return;
-            }
-            
-            ValidateObject();
+            return _errors.Values.SelectMany(e => e).AsEnumerable();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Performs validation on the current <see cref="ValidationNotifier"/> object with the
+        /// provided <see cref="ValidationOption"/>.
+        /// </summary>
+        /// <param name="option">
+        /// The optional <see cref="ValidationOption"/> that specifies how to perform the validation. If not provided,
+        /// will perform object validation on all object properties.
+        /// </param>
+        public void Validate(ValidationOption? option = null)
+        {
+            switch (option)
+            {
+                case null or ValidationOption.All:
+                    ValidateObject();
+                    break;
+                case ValidationOption.Required:
+                    ValidateRequired();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="propertyName"></param>
+        /// <param name="value"></param>
         public void Validate(string propertyName, object? value) => ValidateProperty(propertyName, value);
 
         /// <summary>
@@ -158,13 +177,13 @@ namespace EntityObserver
         private void ClearErrors()
         {
             if (!HasErrors) return;
-            
+
             foreach (var propertyName in _errors.Keys.ToList())
             {
                 _errors.Remove(propertyName);
                 RaiseErrorsChanged(propertyName);
             }
-            
+
             RaisePropertyChanged(nameof(HasErrors));
         }
 
@@ -190,7 +209,7 @@ namespace EntityObserver
         private void ClearError(string propertyName)
         {
             if (!_errors.ContainsKey(propertyName)) return;
-            
+
             _errors.Remove(propertyName);
             RaiseErrorsChanged(propertyName);
             RaisePropertyChanged(nameof(HasErrors));

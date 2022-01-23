@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using EntityObserver;
-using EntityObserver.Tests.TestModels;
+using EntityObserver.Tests.TestEntities;
 
 namespace EntityObserver.Tests.TestObservers
 {
@@ -11,6 +11,7 @@ namespace EntityObserver.Tests.TestObservers
         {
         }
 
+        [Required(ErrorMessage = "Id is required")]
         public Guid Id
         {
             get => GetValue<Guid>();
@@ -32,6 +33,7 @@ namespace EntityObserver.Tests.TestObservers
         }
 
         [Required(ErrorMessage = "State is required")]
+        [StringLength(2)]
         public string State
         {
             get => GetValue<string>();
@@ -39,6 +41,7 @@ namespace EntityObserver.Tests.TestObservers
         }
 
         [Required(ErrorMessage = "Zip is required")]
+        [Range(100000, 999999)]
         public int Zip
         {
             get => GetValue<int>();

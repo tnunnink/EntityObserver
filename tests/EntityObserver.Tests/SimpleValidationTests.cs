@@ -1,6 +1,9 @@
-﻿using AutoFixture;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using AutoFixture;
+using EntityObserver.Tests.TestEntities;
 using FluentAssertions;
-using EntityObserver.Tests.TestModels;
 using EntityObserver.Tests.TestObservers;
 using NUnit.Framework;
 
@@ -9,68 +12,254 @@ namespace EntityObserver.Tests
     [TestFixture]
     public class SimpleValidationTests
     {
-        private Address _entity;
+        private Address _valid;
         private Fixture _fixture;
-        private AddressObserver _observer;
+        private Address _invalid;
 
         [SetUp]
         public void Setup()
         {
             _fixture = new Fixture();
-            _entity = _fixture.Create<Address>();
-            _observer = new AddressObserver(_entity);
+            
+            _valid = _fixture.Build<Address>()
+                .With(a => a.State, "MO")
+                .With(a => a.Zip, 123456)
+                .Create();
+            
+            _invalid = _fixture.Build<Address>().With(a => a.City, string.Empty).Create();
         }
 
         [Test]
-        public void HasErrors_Valid_ShouldBeFalse()
+        public void HasErrors_InvalidStateButUnvalidated_ShouldBeFalse()
         {
-            _observer.HasErrors.Should().BeFalse();
+            var observer = new AddressObserver(_invalid);
+
+            observer.HasErrors.Should().BeFalse();
         }
 
         [Test]
-        public void HasErrors_Invalid_ShouldBeTrue()
+        public void HasErrors_ValidState_ShouldBeFalse()
         {
-            _observer.City = string.Empty;
+            var observer = new AddressObserver(_valid);
+            
+            observer.HasErrors.Should().BeFalse();
+        }
 
-            _observer.HasErrors.Should().BeTrue();
+        [Test]
+        public void HasErrors_InvalidStateAndValidated_ShouldBeTrue()
+        {
+            var observer = new AddressObserver(_invalid);
+            observer.Validate();
+            
+            observer.City = string.Empty;
+
+            observer.HasErrors.Should().BeTrue();
         }
         
         [Test]
-        public void HasErrors_ResolveError_ShouldBeFalse()
+        public void HasErrors_ResolveErrors_ShouldBeFalse()
         {
-            _observer.City = string.Empty;
-            _observer.HasErrors.Should().BeTrue();
+            var observer = new AddressObserver(_invalid);
 
-            _observer.City = _fixture.Create<string>();
-            _observer.HasErrors.Should().BeFalse();
+            observer.City = _valid.City;
+            observer.State = _valid.State;
+            observer.Zip = _valid.Zip;
+            
+            observer.HasErrors.Should().BeFalse();
         }
 
         [Test]
         public void ErrorsChanged_HasErrors_ShouldBeRaised()
         {
-            var monitor = _observer.Monitor();
+            var observer = new AddressObserver(_valid);
+            var monitor = observer.Monitor();
             
-            _observer.City = string.Empty;
+            observer.City = string.Empty;
 
-            monitor.Should().Raise(nameof(_observer.ErrorsChanged));
+            monitor.Should().Raise(nameof(observer.ErrorsChanged));
         }
         
         [Test]
-        public void ErrorsChanged_ClearErrors_ShouldBeRaised()
+        public void ErrorsChanged_ClearError_ShouldBeRaised()
         {
-            _observer.City = string.Empty;
-            
-            var monitor = _observer.Monitor();
+            var observer = new AddressObserver(_invalid);
+            observer.Validate();
+            var monitor = observer.Monitor();
 
-            _observer.City = _fixture.Create<string>();
+            observer.City = _fixture.Create<string>();
 
-            monitor.Should().Raise(nameof(_observer.ErrorsChanged));
+            monitor.Should().Raise(nameof(observer.ErrorsChanged));
         }
 
         [Test]
-        public void ValidateObject()
+        public void Validate_InvalidEntity_HasErrorsShouldBeTrue()
         {
-            
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate();
+
+            observer.HasErrors.Should().BeTrue();
+        }
+        
+        [Test]
+        public void Validate_ValidEntity_HasErrorsShouldBeFalse()
+        {
+            var observer = new AddressObserver(_valid);
+
+            observer.Validate();
+
+            observer.HasErrors.Should().BeFalse();
+        }
+        
+        [Test]
+        public void Validate_MultipleValidations_ShouldHaveExpectedErrorCounts()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate();
+            observer.Validate();
+            observer.Validate();
+
+            observer.HasErrors.Should().BeTrue();
+
+            observer.GetErrors(m => m.City).Should().HaveCount(1);
+            observer.GetErrors(m => m.State).Should().HaveCount(1);
+            observer.GetErrors(m => m.Zip).Should().HaveCount(1);
+        }
+        
+        [Test]
+        public void ValidateProperty_EmptyString_ShouldThrowArgumentException()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            FluentActions.Invoking(() => observer.Validate("", _valid.City)).Should().Throw<ArgumentException>();
+        }
+        
+        [Test]
+        public void ValidateProperty_NullValue_PropertyShouldHaveErrors()
+        {
+            var observer = new AddressObserver(_valid);
+            observer.Validate();
+
+            observer.Validate("City", null);
+
+            var errors = (observer.GetErrors("City") as IEnumerable<string>)?.ToList();
+
+            errors.Should().NotBeEmpty();
+            errors.Should().Contain("City is required");
+        }
+        
+        [Test]
+        public void ValidateProperty_InvalidProperty_HasErrorsShouldBeTrue()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate(m => m.City);
+
+            observer.HasErrors.Should().BeTrue();
+        }
+        
+        [Test]
+        public void ValidateProperty_ValidEntity_HasErrorsShouldBeFalse()
+        {
+            var observer = new AddressObserver(_valid);
+
+            observer.Validate(m => m.City);
+
+            observer.HasErrors.Should().BeFalse();
+        }
+        
+        [Test]
+        public void ValidateRequired_InvalidProperty_HasErrorsShouldBeTrue()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate(ValidationOption.Required);
+
+            observer.HasErrors.Should().BeTrue();
+        }
+        
+        [Test]
+        public void ValidateRequired_ValidEntity_HasErrorsShouldBeFalse()
+        {
+            var observer = new AddressObserver(_valid);
+
+            observer.Validate(ValidationOption.Required);
+
+            observer.HasErrors.Should().BeFalse();
+        }
+        
+        [Test]
+        public void ValidateRequired_InvalidProperty_OnlyRequiredPropertiesShouldHaveErrors()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate(ValidationOption.Required);
+
+            var errors = observer.GetErrors();
+
+            errors.Should().HaveCount(1);
+        }
+        
+        [Test]
+        public void ValidateRequired_MultipleValidations_ShouldHaveExpectedErrorCounts()
+        {
+            var observer = new AddressObserver(_invalid);
+
+            observer.Validate(ValidationOption.Required);
+            observer.Validate(ValidationOption.Required);
+            observer.Validate(ValidationOption.Required);
+
+            observer.HasErrors.Should().BeTrue();
+
+            observer.GetErrors(m => m.City).Should().HaveCount(1);
+            observer.GetErrors(m => m.State).Should().HaveCount(0);
+            observer.GetErrors(m => m.Zip).Should().HaveCount(0);
+        }
+
+        [Test]
+        public void GetErrors_InvalidEntity_ShouldReturnExpected()
+        {
+            var observer = new AddressObserver(_invalid);
+            observer.Validate();
+
+            var errors = (observer.GetErrors("City") as IEnumerable<string>)?.ToList();
+
+            errors.Should().NotBeNull();
+            errors.Should().Contain("City is required");
+        }
+        
+        [Test]
+        public void GetErrors_ValidEntity_ShouldBeEmpty()
+        {
+            var observer = new AddressObserver(_valid);
+            observer.Validate();
+
+            var errors = (observer.GetErrors("City") as IEnumerable<string>)?.ToList();
+
+            errors.Should().BeEmpty();
+        }
+
+        [Test]
+        public void GetAllErrors_InvalidEntity_ShouldHaveExpectedCount()
+        {
+            var observer = new AddressObserver(_invalid);
+            observer.Validate();
+
+            var errors = observer.GetErrors();
+
+            errors.Should().HaveCount(3);
+        }
+        
+        [Test]
+        public void GetAllErrors_ValidEntity_ShouldBeEmpty()
+        {
+            var observer = new AddressObserver(_valid);
+            observer.Validate();
+
+            var errors = observer.GetErrors();
+
+            errors.Should().BeEmpty();
         }
     }
 }

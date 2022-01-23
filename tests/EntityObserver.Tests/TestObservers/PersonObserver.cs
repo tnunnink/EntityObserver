@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using EntityObserver;
-using EntityObserver.Tests.TestModels;
+using EntityObserver.Tests.TestEntities;
 
 namespace EntityObserver.Tests.TestObservers
 {
