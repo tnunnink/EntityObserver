@@ -42,10 +42,6 @@ namespace EntityObserver
             return (Activator.CreateInstance(listType) as IList)!;
         }
 
-        public static IEnumerable<TAttribute> FindAttributes<TAttribute>(this Type type)
-            where TAttribute : Attribute =>
-            type.GetProperties().SelectMany(p => p.GetCustomAttributes(false).OfType<TAttribute>());
-
         /// <summary>
         /// Gets an attribute on the specified property for the current type.  
         /// </summary>

@@ -10,17 +10,16 @@ namespace EntityObserver.Tests
     [TestFixture]
     public class ComplexObserverTests
     {
-        
         private Person _person;
         private Fixture _fixture;
-        private PersonObserver _observable;
+        private PersonObserver _observer;
 
         [SetUp]
         public void Setup()
         {
             _fixture = new Fixture();
             _person = _fixture.Create<Person>();
-            _observable = new PersonObserver(_person);
+            _observer = new PersonObserver(_person);
         }
         
         [Test]
@@ -42,20 +41,28 @@ namespace EntityObserver.Tests
             observable.Cars.Last().Entity.Should().BeSameAs(_person.Cars.Last());
         }
 
+        [Test] //todo not sure hot exactly to test this since its private
+        public void New_RegisterMultipleSameObserver_ShouldHaveSingle()
+        {
+            var observable = new RegisterMultipleSameObserver(_person);
+
+            observable.Should().NotBeNull();
+        }
+
         [Test]
         public void SetComplexMember_NewValue_IsChangedShouldBeTrue()
         {
-            _observable.Address.City = _fixture.Create<string>();
+            _observer.Address.City = _fixture.Create<string>();
 
-            _observable.IsChanged.Should().BeTrue();
+            _observer.IsChanged.Should().BeTrue();
         }
 
         [Test]
         public void SetComplexMember_NewValue_ShouldRaisePropertyChangedForBase()
         {
-            var monitor = _observable.Monitor();
+            var monitor = _observer.Monitor();
 
-            _observable.Address.Zip = _fixture.Create<int>();
+            _observer.Address.Zip = _fixture.Create<int>();
             
             monitor.Should().RaisePropertyChangeFor(m => m.IsChanged);
         }
@@ -63,9 +70,9 @@ namespace EntityObserver.Tests
         [Test]
         public void SetComplexMember_NewValue_ShouldRaisePropertyChangedForMember()
         {
-            var monitor = _observable.Address.Monitor();
+            var monitor = _observer.Address.Monitor();
 
-            _observable.Address.Zip = _fixture.Create<int>();
+            _observer.Address.Zip = _fixture.Create<int>();
             
             monitor.Should().RaisePropertyChangeFor(m => m.Zip);
             monitor.Should().RaisePropertyChangeFor(m => m.IsChanged);
@@ -74,9 +81,9 @@ namespace EntityObserver.Tests
         [Test]
         public void SetComplexMember_SameValue_ShouldNotRaisePropertyChangedForBase()
         {
-            var monitor = _observable.Monitor();
+            var monitor = _observer.Monitor();
 
-            _observable.Address.Zip = _person.Address.Zip;
+            _observer.Address.Zip = _person.Address.Zip;
             
             monitor.Should().NotRaisePropertyChangeFor(m => m.IsChanged);
         }
@@ -84,12 +91,32 @@ namespace EntityObserver.Tests
         [Test]
         public void SetComplexMember_SameValue_ShouldNotRaisePropertyChangedForMember()
         {
-            var monitor = _observable.Address.Monitor();
+            var monitor = _observer.Address.Monitor();
 
-            _observable.Address.Zip = _person.Address.Zip;
+            _observer.Address.Zip = _person.Address.Zip;
             
             monitor.Should().NotRaisePropertyChangeFor(m => m.Zip);
             monitor.Should().NotRaisePropertyChangeFor(m => m.IsChanged);
+        }
+
+        [Test]
+        public void GetOriginalValue_IsChanged_ShouldBeOriginal()
+        {
+            var newValue = _fixture.Create<string>();
+            var original = _observer.Address.City;
+
+            _observer.Address.City = newValue;
+
+            var originalValue = _observer.Address.GetOriginalValue(m => m.City);
+            originalValue.Should().Be(original);
+        }
+
+        [Test]
+        public void GetOriginalValue_NoChange_ShouldBeCurrent()
+        {
+            var originalValue = _observer.Address.GetOriginalValue(m => m.City);
+            
+            originalValue.Should().Be(_observer.Address.City);
         }
     }
 }

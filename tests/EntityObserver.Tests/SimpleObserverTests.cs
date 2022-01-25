@@ -141,6 +141,15 @@ namespace EntityObserver.Tests
         }
 
         [Test]
+        public void GetOriginalValue_NonMemberExpression_ShouldThrowArgumentException()
+        {
+            var observer = new AddressObserver(_entity);
+
+            FluentActions.Invoking(() => observer.GetOriginalValue(m => m.ToString())).Should()
+                .Throw<ArgumentException>();
+        }
+        
+        [Test]
         public void GetOriginalValue_NewValue_ShouldBeExpected()
         {
             var newValue = _fixture.Create<string>();
@@ -162,6 +171,15 @@ namespace EntityObserver.Tests
 
             var originalValue = observer.GetOriginalValue(m => m.State);
             originalValue.Should().Be(_entity.State);
+        }
+        
+        [Test]
+        public void GetIsChanged_NonMemberExpression_ShouldThrowArgumentException()
+        {
+            var observer = new AddressObserver(_entity);
+
+            FluentActions.Invoking(() => observer.GetIsChanged(m => m.ToString())).Should()
+                .Throw<ArgumentException>();
         }
 
         [Test]

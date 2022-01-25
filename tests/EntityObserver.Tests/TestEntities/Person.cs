@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace EntityObserver.Tests.TestEntities
 {
@@ -14,5 +15,17 @@ namespace EntityObserver.Tests.TestEntities
         public Address Address { get; set; }
         public IEnumerable<string> Emails { get; set; }
         public List<Car> Cars { get; set; }
+
+        public void Rename(string first, string last)
+        {
+            if (string.IsNullOrEmpty(first))
+                throw new ArgumentNullException(nameof(first));
+            
+            if (string.IsNullOrEmpty(first))
+                throw new ArgumentNullException(nameof(last));
+            
+            FirstName = first;
+            LastName = last;
+        }
     }
 }

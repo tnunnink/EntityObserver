@@ -394,7 +394,7 @@ namespace EntityObserver
             var propertyInfo = Entity.GetType().GetProperty(propertyName);
 
             if (propertyInfo is null)
-                throw new ArgumentException($"Could not retrieve property info for {propertyName}");
+                throw new ArgumentException($"Could not find property info for {propertyName}");
 
             return propertyInfo;
         }
